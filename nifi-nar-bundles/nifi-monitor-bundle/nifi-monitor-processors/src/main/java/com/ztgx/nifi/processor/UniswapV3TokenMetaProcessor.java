@@ -1,16 +1,30 @@
 package com.ztgx.nifi.processor;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.ztgx.nifi.util.GraphQLUtil;
+import com.ztgx.nifi.util.JedisUtil;
 import org.apache.nifi.annotation.behavior.SideEffectFree;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.components.PropertyValue;
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.flowfile.attributes.CoreAttributes;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
+import org.apache.nifi.processor.io.StreamCallback;
 import org.apache.nifi.processor.util.StandardValidators;
+import redis.clients.jedis.Jedis;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @SideEffectFree
@@ -117,5 +131,72 @@ public class UniswapV3TokenMetaProcessor extends AbstractProcessor {
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
 
+        PropertyValue property = context.getProperty(JSON_TEMPLATE);
+        String template = property.getValue();
+        String redisIp = context.getProperty(REDIS_IP).getValue();
+        String redisPort = context.getProperty(REDIS_PORT).getValue();
+        String redisPwd = context.getProperty(REDIS_PWD).getValue();
+        String skipNumber = context.getProperty(SKIP_NUMBER).getValue();
+        String graphUrl = context.getProperty(GRAP_URL).getValue();
+        String stepNumber = context.getProperty(STEP_NUMBER).getValue();
+        String apiKey = context.getProperty(GRAP_API_KEY).getValue();
+        Jedis jedis = JedisUtil.getJedis(redisIp, Integer.parseInt(redisPort), redisPwd);
+        String currentSkipNumber = jedis.get("uniSwapV3CurrentSkipNumber_tokens_pairs");
+        if (currentSkipNumber == null) {
+            currentSkipNumber = stepNumber;
+            jedis.set("uniSwapV3CurrentSkipNumber_tokens_pairs",currentSkipNumber);
+        } else {
+            currentSkipNumber = String.valueOf(Integer.parseInt(currentSkipNumber) + Integer.parseInt(stepNumber)) ;
+        }
+        FlowFile flowFile = session.create();
+        String newBody = template.replace("<<<currentSkipNumber>>>",currentSkipNumber).replace("<<<stepNumber>>>",stepNumber);
+        // String post = GraphQLUtil.post(graphUrl, "application/json", newBody);
+        String post = GraphQLUtil.postWithApiKey(graphUrl, "application/json", newBody,apiKey);
+        JSONObject jsonObject = JSON.parseObject(newBody);
+        boolean isFinish = isFinished(post);
+        if (!isFinish){
+            flowFile = session.write(flowFile, new StreamCallback() {
+                @Override
+                public void process(InputStream in, OutputStream out) throws IOException {
+                    assert post != null;
+                    out.write(post.getBytes(StandardCharsets.UTF_8));
+                }
+            });
+            Map<String, String> generatedAttributes = new HashMap<String, String>();
+            generatedAttributes.put(CoreAttributes.MIME_TYPE.key(), "application/json");
+            flowFile = session.putAllAttributes(flowFile, generatedAttributes);
+            jedis.set("uniSwapV2CurrentSkipNumber_tokens_pairs",currentSkipNumber);
+            session.transfer(flowFile,REL_SUCCESS);
+        } else {
+            session.transfer(flowFile,REL_FAILURE);
+        }
+
     }
+
+    private boolean isFinished(String post) {
+        boolean isBlocked = false;
+        JSONObject jsonObject = JSON.parseObject(post);
+        if (jsonObject!=null && !jsonObject.isEmpty()){
+            if (jsonObject.containsKey("data")){
+                JSONObject data = jsonObject.getJSONObject("data");
+                if (data!=null){
+                    JSONArray pairs = data.getJSONArray("pools");
+                    JSONArray tokens = data.getJSONArray("tokens");
+                    if ((pairs==null || pairs.isEmpty() ) &&  (tokens==null || tokens.isEmpty())){
+                        isBlocked = true;
+                    }
+                } else {
+                    isBlocked = true;
+                }
+            }else {
+                isBlocked = true;
+            }
+        }else {
+            isBlocked = true;
+        }
+
+        return isBlocked;
+    }
+
+
 }

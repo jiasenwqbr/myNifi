@@ -12,3 +12,4 @@ com.ztgx.nifi.processor.UpinsertUniSwapV2ToDB
 com.ztgx.nifi.processor.UniswapV2RealTimeProcessor
 com.ztgx.nifi.processor.UniswapV2TransactionMessageHandlerProcessor
 com.ztgx.nifi.processor.UniswapV2TokenMetaProcessor
+com.ztgx.nifi.processor.UniswapV3TokenMetaProcessor
