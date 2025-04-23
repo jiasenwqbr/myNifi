@@ -165,9 +165,19 @@ public class UniswapV3TokenMetaProcessor extends AbstractProcessor {
             Map<String, String> generatedAttributes = new HashMap<String, String>();
             generatedAttributes.put(CoreAttributes.MIME_TYPE.key(), "application/json");
             flowFile = session.putAllAttributes(flowFile, generatedAttributes);
-            jedis.set("uniSwapV2CurrentSkipNumber_tokens_pairs",currentSkipNumber);
+            jedis.set("uniSwapV3CurrentSkipNumber_tokens_pairs",currentSkipNumber);
             session.transfer(flowFile,REL_SUCCESS);
         } else {
+            flowFile = session.write(flowFile, new StreamCallback() {
+                @Override
+                public void process(InputStream in, OutputStream out) throws IOException {
+                    assert post != null;
+                    out.write(post.getBytes(StandardCharsets.UTF_8));
+                }
+            });
+            Map<String, String> generatedAttributes = new HashMap<String, String>();
+            generatedAttributes.put(CoreAttributes.MIME_TYPE.key(), "application/json");
+            flowFile = session.putAllAttributes(flowFile, generatedAttributes);
             session.transfer(flowFile,REL_FAILURE);
         }
 
