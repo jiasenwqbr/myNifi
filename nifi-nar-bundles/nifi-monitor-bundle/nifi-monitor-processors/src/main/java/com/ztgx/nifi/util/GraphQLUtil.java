@@ -1,6 +1,7 @@
 package com.ztgx.nifi.util;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -57,6 +58,24 @@ public class GraphQLUtil {
             String responseString = EntityUtils.toString(responseEntity);
             System.out.println("url is :"+url +"\n query is :"+query+"\n response is :"+responseString);
             return responseString;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    public static String commonGet (String url,String contentType){
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+        HttpGet get = new HttpGet(url);
+        get.setHeader("Content-Type", contentType);
+        org.apache.http.HttpResponse response = client.execute(get);
+        HttpEntity responseEntity = response.getEntity();
+
+        // 5. 打印响应
+        String responseString = EntityUtils.toString(responseEntity);
+        System.out.println("url is :"+url +"\n "+"\n response is :"+responseString);
+        return responseString;
         } catch (Exception e) {
             e.printStackTrace();
         }

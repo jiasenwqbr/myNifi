@@ -14,7 +14,6 @@ public class RuleUtil {
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
         headers.setContentType(type);
         headers.add("Accept", MediaType.APPLICATION_JSON.toString());
-
         org.springframework.http.HttpEntity<String> formEntity = new org.springframework.http.HttpEntity<String>(
                 jsonObj.toString(), headers);
         CTResponse resp = new CTResponse();
@@ -27,12 +26,37 @@ public class RuleUtil {
 
         return resp;
     }
-//
-//    public static void main(String[] args) {
-//        String params = "{\"parameter1\":\"913501006830690573\"}";
-//        String url = "http://192.168.2.86:9013/rs/rs/v0031";
-//        CTResponse r = postRule(params,url);
+
+    public static  CTResponse getRule( String cleanURI)
+    {
+        String restUrl = cleanURI;
+        MediaType type = MediaType.parseMediaType("application/json; charset=UTF-8");
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(type);
+        headers.add("Accept", MediaType.APPLICATION_JSON.toString());
+//        org.springframework.http.HttpEntity<String> formEntity = new org.springframework.http.HttpEntity<String>(
+//                jsonObj.toString(), headers);
+        CTResponse resp = new CTResponse();
+        try{
+            resp = RestClient.getClient().getForObject(restUrl, CTResponse.class);
+
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+
+        return resp;
+    }
+
+
+
+
+    public static void main(String[] args) {
+        ///String params = "{\"parameter1\":\"913501006830690573\"}";
+        String url = "https://api.gopluslabs.io/api/v1/token_security/1?contract_addresses=0xee2a03aa6dacf51c18679c516ad5283d8e7c2637";
+//        CTResponse r = getRule(url);
 //        System.out.println(r.getResult());
-//    }
+
+        GraphQLUtil.commonGet(url,"application/json; charset=UTF-8");
+    }
 
 }
