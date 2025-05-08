@@ -16,3 +16,4 @@ com.ztgx.nifi.processor.UniswapV3TokenMetaProcessor
 com.ztgx.nifi.processor.RedisDataReaderProcessor
 com.ztgx.nifi.processor.GoPlusHttpProcessor
 com.ztgx.nifi.processor.GoPlusHttpResultProcessor
+com.ztgx.nifi.processor.BscUniswapV2HistoryProcessor

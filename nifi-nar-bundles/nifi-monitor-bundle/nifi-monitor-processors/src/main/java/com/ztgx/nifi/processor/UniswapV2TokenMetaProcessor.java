@@ -103,6 +103,13 @@ public class UniswapV2TokenMetaProcessor extends AbstractProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .required(true)
             .build();
+    public static final PropertyDescriptor REDIS_CURRENT_SKIP_NUMBER_KEY = new PropertyDescriptor.Builder()
+            .name("REDIS_CURRENT_SKIP_NUMBER_KEY_Name")
+            .displayName("redis current skip number key name")
+            .description("redis current skip number key name")
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .required(true)
+            .build();
 
 
 
@@ -121,6 +128,7 @@ public class UniswapV2TokenMetaProcessor extends AbstractProcessor {
         pds.add(GRAP_URL);
         pds.add(GRAP_API_KEY);
         pds.add(STEP_NUMBER);
+        pds.add(REDIS_CURRENT_SKIP_NUMBER_KEY);
 
         propDescriptors = Collections.unmodifiableList(pds);
     }
@@ -143,11 +151,12 @@ public class UniswapV2TokenMetaProcessor extends AbstractProcessor {
         String graphUrl = context.getProperty(GRAP_URL).getValue();
         String stepNumber = context.getProperty(STEP_NUMBER).getValue();
         String apiKey = context.getProperty(GRAP_API_KEY).getValue();
+        String redisCurrentSkipNumberKeyName = context.getProperty(REDIS_CURRENT_SKIP_NUMBER_KEY).getValue();
         Jedis jedis = JedisUtil.getJedis(redisIp, Integer.parseInt(redisPort), redisPwd);
-        String currentSkipNumber = jedis.get("uniSwapV2CurrentSkipNumber_tokens_pairs");
+        String currentSkipNumber = jedis.get(redisCurrentSkipNumberKeyName);
         if (currentSkipNumber == null) {
             currentSkipNumber = stepNumber;
-            jedis.set("uniSwapV2CurrentSkipNumber_tokens_pairs",currentSkipNumber);
+            jedis.set(redisCurrentSkipNumberKeyName,currentSkipNumber);
         } else {
             currentSkipNumber = String.valueOf(Integer.parseInt(currentSkipNumber) + Integer.parseInt(stepNumber)) ;
         }
@@ -168,7 +177,7 @@ public class UniswapV2TokenMetaProcessor extends AbstractProcessor {
             Map<String, String> generatedAttributes = new HashMap<String, String>();
             generatedAttributes.put(CoreAttributes.MIME_TYPE.key(), "application/json");
             flowFile = session.putAllAttributes(flowFile, generatedAttributes);
-            jedis.set("uniSwapV2CurrentSkipNumber_tokens_pairs",currentSkipNumber);
+            jedis.set(redisCurrentSkipNumberKeyName,currentSkipNumber);
             session.transfer(flowFile,REL_SUCCESS);
         } else {
             session.transfer(flowFile,REL_FAILURE);
